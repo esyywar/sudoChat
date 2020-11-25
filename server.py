@@ -59,7 +59,7 @@ class ChatRoom:
                     self.socketList.append(client_socket)
                     self.clientDict[client_socket] = username
 
-                    print(f"< {username} has entered the chat! >")
+                    print(f"< {username} has entered the chat! ({len(self.socketList) - 1} users online)>")
 
                 # If activity is from a client socket
                 else:
@@ -67,10 +67,12 @@ class ChatRoom:
 
                     # If no message, the client has disconnected
                     if not message:
-                        print('A client has disconnected')
                         self.socketList.remove(active_socket)
+                        user = self.clientDict[active_socket]
                         del self.clientDict[active_socket]
-                        break
+
+                        print(f"< {user} has disconnected ({len(self.socketList) - 1} users online)>")
+                        continue
 
                     # Get username of the message sender
                     sender = self.clientDict[active_socket]
