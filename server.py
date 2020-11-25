@@ -29,7 +29,7 @@ class ChatRoom:
         # Listen for messages and connections
         self.server.listen()
 
-        # Enter main loop for chat room
+        # Enter main loop for chat room (using daemon=True for debug mode only)
         main = threading.Thread(target=self.serverMain, daemon=True)
         main.start()
 
@@ -77,17 +77,20 @@ class ChatRoom:
                     # Get username of the message sender
                     sender = self.clientDict[active_socket]
 
-                    msg_prefix = f"<{sender}>"
+                    msg_prefix = f"<{sender}> "
+
+                    # Header and data to send clients
                     msg_header = (len(msg_prefix) + len(message)).to_bytes(self.HEADER_BYTES, byteorder="big")
+                    msg_data = (msg_prefix + message).encode("utf-8")
 
                     # Relay the message to all client sockets except the sender and server
                     for client in self.socketList:
                         if client != sender and client != self.server:
-                            print(len(self.socketList))
-                            #self.server.send(msg_header + message.encode('utf-8'))
+                            print(msg_prefix + message)
+                            #self.server.send(msg_header + msg_data)
 
 
-    def getData(self, client_socket):
+    def getData(self, client_socket) -> str:
         try:
             # Read header packet which gives length of payload
             msg_header = client_socket.recv(self.HEADER_BYTES)

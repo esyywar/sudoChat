@@ -1,5 +1,5 @@
 import socket
-import select
+import threading
 import json
 import sys
 
@@ -19,6 +19,11 @@ class Client:
         self.sendUsername()
 
 
+    def __del__(self):
+        self.client.close()
+        print("Client closed.")
+
+
     def sendUsername(self):
         # Get a username for the active user
         self.username = input("Enter your username: ")
@@ -32,21 +37,26 @@ class Client:
 
         try:
             self.client.connect((self.SERVER_IP, self.SERVER_PORT))
-            self.client.setblocking(False)
 
             # Send the username header and username to the server
             self.client.send(username_header + self.username.encode('utf-8'))
 
-            # Enter main client loop
-            self.clientMain()
         except:
             print("Username send to server failed...")
             sys.exit()
 
+        # Begin listening for input from chat room
+        self.thread_listen = threading.Thread(target=self.clientListen, daemon=True)
+        self.thread_listen.start()
 
-    def clientMain(self):
+        # main thread is for taking user input and sending data
+        self.clientInput()
+
+
+    def clientInput(self):
         while True:
-            message = input(f"<{self.username}> ")
+            print(f"<{self.username}>", end=" ")
+            message = input()
 
             if message is None:
                 continue
@@ -59,9 +69,22 @@ class Client:
                 print("Message could not be sent...")
                 break
 
-            
+    def clientListen(self):
+        while True:
+            # Read length of incoming message from server
+            msg_header = self.client.recv(self.HEADER_BYTES)
+            msg_len = int.from_bytes(msg_header, byteorder="big")
+
+            # Read message payload from server
+            payload = self.client.recv(msg_len).decode("utf-8")
+
+            print(payload)
+     
 
 client = Client()
+
 input()
+
+print("hit end")
 
 
