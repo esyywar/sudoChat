@@ -29,10 +29,10 @@ class ChatRoom:
         # Listen for messages and connections
         self.server.listen()
 
-        t1 = threading.Thread(target=self.acceptConnections, args=(), daemon=True)
-        t1.start()
+        # Enter main loop for chat room
+        self.serverMain()
 
-    def acceptConnections(self):
+    def serverMain(self):
         print("< ChatRoom is now accepting connections! >")
 
         while True:
@@ -44,38 +44,56 @@ class ChatRoom:
 
                 # If activity on server socket, we handle a new client is connecting
                 if active_socket == self.server:
-                    # accept connection from a client socket and append to chat room list
+                    # accept connection from a client socket
                     client_socket, _ = self.server.accept()
-                    self.socketList.append(client_socket)
 
                     # Call method to get username and store in clientDict
                     username = self.getData(client_socket)
+
+                    if username is None:
+                        continue
+
+                    # Append to socket list and enter in clientDict
+                    self.socketList.append(client_socket)
                     self.clientDict[client_socket] = username
 
                     print(f"< {username} has entered the chat!")
 
                 # If activity is from a client socket
                 else:
-                    pass
+                    message = self.getData(active_socket)
+
+                    # If no message, the client has disconnected
+                    if message is None:
+                        print('A client has disconnected')
+                        continue
+
+                    # Get username of the message sender
+                    sender = self.clientDict[active_socket]
+
+                    msg_prefix = f"< {sender} >"
+                    msg_header = (len(msg_prefix) + len(message)).to_bytes(self.HEADER_BYTES, byteorder="big")
+
+                    # Relay the message to all client sockets except the sender and server
+                    for client in self.socketList:
+                        if client != sender and client != self.server:
+                            self.server.send(msg_header + message.encode('utf-8'))
 
 
-    def getData(self, client_socket) -> str:
+    def getData(self, client_socket):
         try:
             # Read header packet which gives length of payload
             msg_header = client_socket.recv(self.HEADER_BYTES)
             msg_len = int.from_bytes(msg_header, byteorder="big")
             
             # Read message payload from client
-            payload = client_socket.recv(msg_len).decode('utf-8')
+            payload = client_socket.recv(msg_len).decode("utf-8")
 
             return payload
         except Exception as e:
             print("Data receive failed: " + str(e))
 
             return None
-
-    def relayMessage(self, message: str, senderSocket):
-        pass
 
     def closeChat(self):
         pass
