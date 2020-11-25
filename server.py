@@ -29,9 +29,11 @@ class ChatRoom:
         # Listen for messages and connections
         self.server.listen()
 
-        # Enter main loop for chat room (using daemon=True for debug mode only)
-        main = threading.Thread(target=self.serverMain, daemon=True)
-        main.start()
+        # Enter main loop for chat room with daemon thread
+        #main = threading.Thread(target=self.serverMain, daemon=True)
+        #main.start()
+
+        self.serverMain()
 
 
     def serverMain(self):
@@ -67,11 +69,6 @@ class ChatRoom:
 
                     # If no message, the client has disconnected
                     if not message:
-                        self.socketList.remove(active_socket)
-                        user = self.clientDict[active_socket]
-                        del self.clientDict[active_socket]
-
-                        print(f"< {user} has disconnected ({len(self.socketList) - 1} users online)>")
                         continue
 
                     # Get username of the message sender
@@ -79,15 +76,17 @@ class ChatRoom:
 
                     msg_prefix = f"<{sender}> "
 
+                    print(msg_prefix + message)
+
                     # Header and data to send clients
                     msg_header = (len(msg_prefix) + len(message)).to_bytes(self.HEADER_BYTES, byteorder="big")
                     msg_data = (msg_prefix + message).encode("utf-8")
 
                     # Relay the message to all client sockets except the sender and server
                     for client in self.socketList:
-                        if client != sender and client != self.server:
-                            print(msg_prefix + message)
-                            #self.server.send(msg_header + msg_data)
+                        if client != active_socket and client != self.server:
+                            print("sending data th another guy...")
+                            self.server.send(msg_header + msg_data)
 
 
     def getData(self, client_socket) -> str:
@@ -101,8 +100,16 @@ class ChatRoom:
 
             return payload
         except Exception as e:
-            print("Data receive failed: " + str(e))
+            # Check if error resulted from disconnection:
+            if "10054" in str(e):
+                self.socketList.remove(client_socket)
+                user = self.clientDict[client_socket]
+                del self.clientDict[client_socket]
 
+                print(f"< {user} has disconnected ({len(self.socketList) - 1} users online)>")
+            else:
+                print("Data receive failed: " + str(e))
+            
             return None
 
 
@@ -110,6 +117,4 @@ class ChatRoom:
         self.server.close()
 
 
-
 chat = ChatRoom()
-input()

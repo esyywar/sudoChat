@@ -70,6 +70,8 @@ class Client:
                 break
 
     def clientListen(self):
+        print("client is listening for messages...")
+        
         while True:
             # Read length of incoming message from server
             msg_header = self.client.recv(self.HEADER_BYTES)
@@ -82,9 +84,5 @@ class Client:
      
 
 client = Client()
-
-input()
-
-print("hit end")
 
 
