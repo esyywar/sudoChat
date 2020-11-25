@@ -18,6 +18,7 @@ class Client:
 
         self.sendUsername()
 
+
     def sendUsername(self):
         # Get a username for the active user
         self.username = input("Enter your username: ")
@@ -35,9 +36,29 @@ class Client:
 
             # Send the username header and username to the server
             self.client.send(username_header + self.username.encode('utf-8'))
+
+            # Enter main client loop
+            self.clientMain()
         except:
             print("Username send to server failed...")
             sys.exit()
+
+
+    def clientMain(self):
+        while True:
+            message = input(f"<{self.username}> ")
+
+            if message is None:
+                continue
+
+            msg_header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
+
+            try:
+                self.client.send(msg_header + message.encode('utf-8'))
+            except:
+                print("Message could not be sent...")
+                break
+
             
 
 client = Client()

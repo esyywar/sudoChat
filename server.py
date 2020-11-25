@@ -30,7 +30,9 @@ class ChatRoom:
         self.server.listen()
 
         # Enter main loop for chat room
-        self.serverMain()
+        main = threading.Thread(target=self.serverMain, daemon=True)
+        main.start()
+
 
     def serverMain(self):
         print("< ChatRoom is now accepting connections! >")
@@ -57,27 +59,30 @@ class ChatRoom:
                     self.socketList.append(client_socket)
                     self.clientDict[client_socket] = username
 
-                    print(f"< {username} has entered the chat!")
+                    print(f"< {username} has entered the chat! >")
 
                 # If activity is from a client socket
                 else:
                     message = self.getData(active_socket)
 
                     # If no message, the client has disconnected
-                    if message is None:
+                    if not message:
                         print('A client has disconnected')
-                        continue
+                        self.socketList.remove(active_socket)
+                        del self.clientDict[active_socket]
+                        break
 
                     # Get username of the message sender
                     sender = self.clientDict[active_socket]
 
-                    msg_prefix = f"< {sender} >"
+                    msg_prefix = f"<{sender}>"
                     msg_header = (len(msg_prefix) + len(message)).to_bytes(self.HEADER_BYTES, byteorder="big")
 
                     # Relay the message to all client sockets except the sender and server
                     for client in self.socketList:
                         if client != sender and client != self.server:
-                            self.server.send(msg_header + message.encode('utf-8'))
+                            print(len(self.socketList))
+                            #self.server.send(msg_header + message.encode('utf-8'))
 
 
     def getData(self, client_socket):
@@ -95,8 +100,9 @@ class ChatRoom:
 
             return None
 
+
     def closeChat(self):
-        pass
+        self.server.close()
 
 
 
