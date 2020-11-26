@@ -25,20 +25,16 @@ class ChatRoom:
         # Add our server socket to the socket list
         self.socketList.append(self.server)
 
-        print("< Welcome to the Chat Room! >")
+        print("<Welcome to the Chat Room!>")
 
         # Listen for messages and connections
         self.server.listen()
-
-        # Enter main loop for chat room with daemon thread
-        #main = threading.Thread(target=self.serverMain, daemon=True)
-        #main.start()
 
         self.serverMain()
 
 
     def serverMain(self):
-        print("< ChatRoom is now accepting connections! >")
+        print("<ChatRoom is now accepting connections!>")
 
         while True:
             # OS level polling for activity on the listed sockets (listens for data packet on sockets)
@@ -62,19 +58,17 @@ class ChatRoom:
                     self.socketList.append(client_socket)
                     self.clientDict[client_socket] = username
 
-                    notification = f"< {username} has entered the chat! ({len(self.socketList) - 1} users online) >"
+                    notif = f"<{username} has entered the chat! ({len(self.socketList) - 1} users online)>"
 
-                    print(notification)
-                    self.broadcast(client_socket, notification)
+                    print(notif)
+                    self.broadcast(client_socket, notif)
 
-                # If activity is from a client socket
+                # If activity is from a client socket, get data and broadcast to other clients
                 else:
                     message = self.getData(active_socket)
 
                     # If no message, the client has disconnected
-                    if not message:
-                        continue
-                    elif message == self.DISCON_MSG:
+                    if not message or message == self.DISCON_MSG:
                         self.disconnectClient(active_socket)
                         continue
 
@@ -121,11 +115,18 @@ class ChatRoom:
 
     
     def disconnectClient(self, exit_socket):
+        # If socket has already been removed then exit
+        if exit_socket not in self.socketList:
+            return
+
         self.socketList.remove(exit_socket)
         user = self.clientDict[exit_socket]
         del self.clientDict[exit_socket]
 
-        print(f"< {user} has disconnected ({len(self.socketList) - 1} users online) >")
+        notif = f"<{user} has disconnected ({len(self.socketList) - 1} users online)>"
+
+        print(notif)
+        self.broadcast(exit_socket, notif)
 
     def closeChat(self):
         self.server.close()

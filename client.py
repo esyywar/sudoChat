@@ -49,8 +49,8 @@ class Client:
             sys.exit()
 
         # start threads for sending and receiving data
-        self.send_thread = threading.Thread(target=self.clientInput)
-        self.read_thread = threading.Thread(target=self.clientListen)
+        self.send_thread = threading.Thread(target=self.clientInput, daemon=True)
+        self.read_thread = threading.Thread(target=self.clientListen, daemon=True)
         self.send_thread.start()
         self.read_thread.start()
         self.send_thread.join()
@@ -74,8 +74,6 @@ class Client:
                 break
 
     def clientListen(self):
-        print("client is listening for messages...")
-
         while True:
             # Read length of incoming message from server
             msg_header = self.client.recv(self.HEADER_BYTES)
@@ -85,11 +83,10 @@ class Client:
             payload = self.client.recv(msg_len).decode("utf-8")
 
             if not payload:
-                print("clientListen error")
-                break
+                continue
 
-            print(payload)
-
+            print("\r" + payload)
+            print(f"\r<{self.username}> ", end="")
     
     def sendData(self, message: str):
         if not message:
