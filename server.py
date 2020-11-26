@@ -36,7 +36,7 @@ class ChatServer:
         print("<SudoChat>")
 
         # Initialize the main chat room
-        self.mainRoom = self.ChatRoom(self.SERVER_PORT + 1)
+        self.mainRoom = self.ChatRoom(self.SERVER_PORT + 1, "Group Chat")
 
         # Listen for messages and connections
         self.server.listen()
@@ -58,7 +58,7 @@ class ChatServer:
 
 
     class ChatRoom:
-        def __init__(self, port: int = 5001):
+        def __init__(self, port: int, name: str):
             self.socketList = []
             self.clientDict = {}
 
@@ -69,15 +69,17 @@ class ChatServer:
             self.SERVER_IP = config["server-ip"]
             self.HEADER_BYTES = config["header-bytes"]
             self.DISCON_MSG = config["disconnect-msg"]
+            self.PORT = port
+            self.NAME = name
 
             # Init socket object for internet interface
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server.bind((self.SERVER_IP, port))
+            self.server.bind((self.SERVER_IP, self.PORT))
 
             # Add our server socket to the socket list
             self.socketList.append(self.server)
 
-            print("<Welcome to the Chat Room!>")
+            print(f"<Welcome to the {self.NAME} Room!>")
 
             # Listen for messages and connections
             self.server.listen()
@@ -90,8 +92,6 @@ class ChatServer:
 
 
         def serverMain(self):
-            print("<ChatRoom is now accepting connections!>")
-
             while True:
                 # OS level polling for activity on the listed sockets (listens for data packet on sockets)
                 active_sockets, _, _ = select.select(self.socketList, [], self.socketList)
@@ -114,6 +114,10 @@ class ChatServer:
                         self.socketList.append(client_socket)
                         self.clientDict[client_socket] = username
 
+                        # Welcome message for the new client
+                        self.sendData(client_socket, f"<Welcome to the {self.NAME} Room!>")
+
+                        # Broadcast notification to other clients in room
                         notif = f"<{username} has entered the chat! ({len(self.socketList) - 1} users online)>"
 
                         print(notif)
@@ -159,6 +163,14 @@ class ChatServer:
                     print("Data receive failed: " + str(e))
                 
                 return None
+
+        
+        def sendData(self, dest_socket, message: str):
+            header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
+            data = message.encode('utf-8')
+
+            dest_socket.send(header + data)
+
 
         def broadcast(self, sender_socket, message: str):
             header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")

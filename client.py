@@ -18,11 +18,29 @@ class Client:
         # Initialize the socket client
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+        # Initialize threads for listening, sending data
+        self.send_thread = threading.Thread(target=self.clientInput, daemon=True)
+        self.read_thread = threading.Thread(target=self.clientListen, daemon=True)
+
+        # Defining exit event for the threads
+        self.exit_event = threading.Event()
+
         self.sendUsername()
 
 
     def __del__(self):
-        self.sendData(self.DISCON_MSG)
+        # Disconnect from the chatroom
+        try:
+            self.sendData(self.DISCON_MSG)
+        except:
+            pass
+
+        # End data send and data read threads
+        self.exit_event.set()
+
+        self.send_thread.join()
+        self.read_thread.join()
+
         self.client.close()
         print("Client closed.")
 
@@ -35,24 +53,21 @@ class Client:
             print("Sorry, username must be between 3 and 30 characters long!")
             self.sendUsername()
 
-        # Prepare to transmit username header
-        username_header = len(self.username).to_bytes(self.HEADER_BYTES, byteorder="big")
-
         try:
             self.client.connect((self.SERVER_IP, 5001))
 
             # Send the username header and username to the server
-            self.client.send(username_header + self.username.encode('utf-8'))
+            self.sendData(self.username)
 
         except:
             print("Username send to server failed...")
             sys.exit()
 
         # start threads for sending and receiving data
-        self.send_thread = threading.Thread(target=self.clientInput, daemon=True)
-        self.read_thread = threading.Thread(target=self.clientListen, daemon=True)
         self.send_thread.start()
         self.read_thread.start()
+
+        # Continue running while threads active
         self.send_thread.join()
         self.read_thread.join()
 
@@ -62,21 +77,29 @@ class Client:
             print("<You>", end=" ")
             message = input()
 
+            if self.exit_event.is_set():
+                break
+
             if message is None:
                 continue
 
-            msg_header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
-
             try:
-                self.client.send(msg_header + message.encode('utf-8'))
+                self.sendData(message)
             except:
                 print("Message could not be sent...")
                 break
+
+        print("input thread exited safely")
+
 
     def clientListen(self):
         while True:
             # Read length of incoming message from server
             msg_header = self.client.recv(self.HEADER_BYTES)
+
+            if self.exit_event.is_set():
+                break
+
             msg_len = int.from_bytes(msg_header, byteorder="big")
 
             # Read message payload from server
@@ -87,6 +110,9 @@ class Client:
 
             print("\r" + payload)
             print("\r<You> ", end="")
+
+        print("listen thread exited safely")
+
     
     def sendData(self, message: str):
         if not message:
