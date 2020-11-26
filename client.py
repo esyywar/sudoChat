@@ -1,8 +1,11 @@
 import socket
 import threading
+
+import msvcrt
+
 import json
 import sys
-import time
+
 
 class Client:
     def __init__(self):
@@ -14,6 +17,7 @@ class Client:
         self.SERVER_PORT = config["server-port"]
         self.HEADER_BYTES = config["header-bytes"]
         self.DISCON_MSG = config["disconnect-msg"]
+        self.EXIT_MSG = config["exit-msg"]
 
         # Initialize the socket client
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -21,9 +25,6 @@ class Client:
         # Initialize threads for listening, sending data
         self.send_thread = threading.Thread(target=self.clientInput, daemon=True)
         self.read_thread = threading.Thread(target=self.clientListen, daemon=True)
-
-        # Defining exit event for the threads
-        self.exit_event = threading.Event()
 
         self.sendUsername()
 
@@ -35,14 +36,8 @@ class Client:
         except:
             pass
 
-        # End data send and data read threads
-        self.exit_event.set()
-
-        self.send_thread.join()
-        self.read_thread.join()
-
         self.client.close()
-        print("Client closed.")
+        print("<You have exited the chat room.>")
 
 
     def sendUsername(self):
@@ -77,11 +72,12 @@ class Client:
             print("<You>", end=" ")
             message = input()
 
-            if self.exit_event.is_set():
-                break
-
             if message is None:
                 continue
+            elif message == self.EXIT_MSG:
+                self.sendData(self.DISCON_MSG)
+                self.client.close()
+                break
 
             try:
                 self.sendData(message)
@@ -89,15 +85,13 @@ class Client:
                 print("Message could not be sent...")
                 break
 
-        print("input thread exited safely")
-
 
     def clientListen(self):
         while True:
             # Read length of incoming message from server
-            msg_header = self.client.recv(self.HEADER_BYTES)
-
-            if self.exit_event.is_set():
+            try:
+                msg_header = self.client.recv(self.HEADER_BYTES)
+            except:
                 break
 
             msg_len = int.from_bytes(msg_header, byteorder="big")
@@ -110,8 +104,6 @@ class Client:
 
             print("\r" + payload)
             print("\r<You> ", end="")
-
-        print("listen thread exited safely")
 
     
     def sendData(self, message: str):
