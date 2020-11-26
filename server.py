@@ -47,7 +47,7 @@ class ChatRoom:
             # Iterate over sockets where activity has been found
             for active_socket in active_sockets:
 
-                # If activity on server socket, we handle a new client is connecting
+                # If activity on server socket, a new client is connecting
                 if active_socket == self.server:
                     # accept connection from a client socket
                     client_socket, _ = self.server.accept()
@@ -62,7 +62,10 @@ class ChatRoom:
                     self.socketList.append(client_socket)
                     self.clientDict[client_socket] = username
 
-                    print(f"< {username} has entered the chat! ({len(self.socketList) - 1} users online) >")
+                    notification = f"< {username} has entered the chat! ({len(self.socketList) - 1} users online) >"
+
+                    print(notification)
+                    self.broadcast(client_socket, notification)
 
                 # If activity is from a client socket
                 else:
@@ -82,15 +85,11 @@ class ChatRoom:
 
                     print(msg_prefix + message)
 
-                    # Header and data to send clients
-                    msg_header = (len(msg_prefix) + len(message)).to_bytes(self.HEADER_BYTES, byteorder="big")
-                    msg_data = (msg_prefix + message).encode("utf-8")
+                    # Data to send clients
+                    msg_data = (msg_prefix + message)
 
-                    # Relay the message to all client sockets except the sender and server
-                    for client in self.socketList:
-                        if client != active_socket and client != self.server:
-                            print("sending data th another guy...")
-                            self.server.send(msg_header + msg_data)
+                    # Broadcast message
+                    self.broadcast(active_socket, msg_data)
 
 
     def getData(self, client_socket) -> str:
@@ -111,6 +110,14 @@ class ChatRoom:
                 print("Data receive failed: " + str(e))
             
             return None
+
+    def broadcast(self, sender_socket, message: str):
+        header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
+        data = message.encode('utf-8')
+
+        for sock in self.socketList:
+            if sock != self.server and sock != sender_socket:
+                sock.send(header + data)
 
     
     def disconnectClient(self, exit_socket):

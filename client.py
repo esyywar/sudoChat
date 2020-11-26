@@ -48,17 +48,13 @@ class Client:
             print("Username send to server failed...")
             sys.exit()
 
-        # main thread is for taking user input and sending data
-        self.clientInput()
-
-
-    def sendData(self, message: str):
-        if not message:
-            return
-
-        header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
-
-        self.client.send(header + message.encode("utf-8"))
+        # start threads for sending and receiving data
+        self.send_thread = threading.Thread(target=self.clientInput)
+        self.read_thread = threading.Thread(target=self.clientListen)
+        self.send_thread.start()
+        self.read_thread.start()
+        self.send_thread.join()
+        self.read_thread.join()
 
 
     def clientInput(self):
@@ -88,7 +84,20 @@ class Client:
             # Read message payload from server
             payload = self.client.recv(msg_len).decode("utf-8")
 
+            if not payload:
+                print("clientListen error")
+                break
+
             print(payload)
+
+    
+    def sendData(self, message: str):
+        if not message:
+            return
+
+        header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
+
+        self.client.send(header + message.encode("utf-8"))
      
 
 client = Client()
