@@ -39,7 +39,7 @@ class Client:
         username_header = len(self.username).to_bytes(self.HEADER_BYTES, byteorder="big")
 
         try:
-            self.client.connect((self.SERVER_IP, self.SERVER_PORT))
+            self.client.connect((self.SERVER_IP, 5001))
 
             # Send the username header and username to the server
             self.client.send(username_header + self.username.encode('utf-8'))
