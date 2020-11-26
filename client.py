@@ -59,7 +59,7 @@ class Client:
 
     def clientInput(self):
         while True:
-            print(f"<{self.username}>", end=" ")
+            print("<You>", end=" ")
             message = input()
 
             if message is None:
@@ -86,7 +86,7 @@ class Client:
                 continue
 
             print("\r" + payload)
-            print(f"\r<{self.username}> ", end="")
+            print("\r<You> ", end="")
     
     def sendData(self, message: str):
         if not message:
