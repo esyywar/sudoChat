@@ -2,6 +2,7 @@ import socket
 import threading
 import json
 import sys
+import time
 
 class Client:
     def __init__(self):
@@ -12,6 +13,7 @@ class Client:
         self.SERVER_IP = config["server-ip"]
         self.SERVER_PORT = config["server-port"]
         self.HEADER_BYTES = config["header-bytes"]
+        self.DISCON_MSG = config["disconnect-msg"]
 
         # Initialize the socket client
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -20,6 +22,7 @@ class Client:
 
 
     def __del__(self):
+        self.sendData(self.DISCON_MSG)
         self.client.close()
         print("Client closed.")
 
@@ -45,12 +48,17 @@ class Client:
             print("Username send to server failed...")
             sys.exit()
 
-        # Begin listening for input from chat room
-        self.thread_listen = threading.Thread(target=self.clientListen, daemon=True)
-        self.thread_listen.start()
-
         # main thread is for taking user input and sending data
         self.clientInput()
+
+
+    def sendData(self, message: str):
+        if not message:
+            return
+
+        header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
+
+        self.client.send(header + message.encode("utf-8"))
 
 
     def clientInput(self):
@@ -71,7 +79,7 @@ class Client:
 
     def clientListen(self):
         print("client is listening for messages...")
-        
+
         while True:
             # Read length of incoming message from server
             msg_header = self.client.recv(self.HEADER_BYTES)

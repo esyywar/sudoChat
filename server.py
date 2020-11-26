@@ -15,6 +15,7 @@ class ChatRoom:
         self.SERVER_IP = config["server-ip"]
         self.SERVER_PORT = config["server-port"]
         self.HEADER_BYTES = config["header-bytes"]
+        self.DISCON_MSG = config["disconnect-msg"]
 
         # Init socket object for internet interface
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,7 +41,7 @@ class ChatRoom:
         print("< ChatRoom is now accepting connections! >")
 
         while True:
-            # I/O level polling for activity on the listed sockets (listens for data packet on sockets)
+            # OS level polling for activity on the listed sockets (listens for data packet on sockets)
             active_sockets, _, _ = select.select(self.socketList, [], self.socketList)
 
             # Iterate over sockets where activity has been found
@@ -61,7 +62,7 @@ class ChatRoom:
                     self.socketList.append(client_socket)
                     self.clientDict[client_socket] = username
 
-                    print(f"< {username} has entered the chat! ({len(self.socketList) - 1} users online)>")
+                    print(f"< {username} has entered the chat! ({len(self.socketList) - 1} users online) >")
 
                 # If activity is from a client socket
                 else:
@@ -69,6 +70,9 @@ class ChatRoom:
 
                     # If no message, the client has disconnected
                     if not message:
+                        continue
+                    elif message == self.DISCON_MSG:
+                        self.disconnectClient(active_socket)
                         continue
 
                     # Get username of the message sender
@@ -102,16 +106,19 @@ class ChatRoom:
         except Exception as e:
             # Check if error resulted from disconnection:
             if "10054" in str(e):
-                self.socketList.remove(client_socket)
-                user = self.clientDict[client_socket]
-                del self.clientDict[client_socket]
-
-                print(f"< {user} has disconnected ({len(self.socketList) - 1} users online)>")
+                self.disconnectClient(client_socket)
             else:
                 print("Data receive failed: " + str(e))
             
             return None
 
+    
+    def disconnectClient(self, exit_socket):
+        self.socketList.remove(exit_socket)
+        user = self.clientDict[exit_socket]
+        del self.clientDict[exit_socket]
+
+        print(f"< {user} has disconnected ({len(self.socketList) - 1} users online) >")
 
     def closeChat(self):
         self.server.close()
