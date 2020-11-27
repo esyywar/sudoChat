@@ -10,7 +10,7 @@ import sys
 
 
 # Base class with config options
-class Config:
+class Base:
     def __init__(self):
         with open("config.json") as json_config:
             config = json.load(json_config)
@@ -21,6 +21,13 @@ class Config:
         self.HEADER_BYTES = config["header-bytes"]
         self.DISCON_MSG = config["disconnect-msg"]
         self.USER_EXIT_MSG = config["exit-msg"]
+
+        commands = config["commands"]
+        
+        # Commands b/w server and root client
+        self.CMD_LIST_ROOMS = commands["list-rooms"]
+        self.CMD_GET_ROOM = commands["get-room"]
+        self.CMD_CREATE_ROOM = commands["create-room"]
 
 
 
@@ -34,7 +41,7 @@ class States(Enum):
 
 
 
-class FSM_Client(Config):
+class FSM_Client(Base):
     def __init__(self):
         super().__init__()
 
@@ -56,10 +63,22 @@ class FSM_Client(Config):
         print(f"\n<Hello, {self.USERNAME}!>")
 
         # Create main socket for client side application
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.rootClient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        # Enter the state machine
-        self.state_machine()
+        # Connect to main chat server
+        self.connectServer()
+
+    
+    def connectServer(self):
+        try:
+            self.rootClient.connect((self.SERVER_IP, self.SERVER_PORT))
+        except:
+            print("<Connection to server failed.>")
+            return
+
+        self.sendData(self.USERNAME)
+
+        self.stateMachine()
 
     
     def __del__(self):
@@ -67,16 +86,16 @@ class FSM_Client(Config):
             print(f"\n<Goodbye, {self.USERNAME}>")
 
     
-    def state_machine(self):
+    def stateMachine(self):
         while True:
             if self.STATE == States.MAIN_MENU:
                 self.menu()
             elif self.STATE == States.ENTER_MAIN:
-                self.main_room()
+                self.mainRoom()
             elif self.STATE == States.SHOW_CHATS:
-                self.show_chatrooms()
+                self.showChatrooms()
             elif self.STATE == States.CREATE_CHAT:
-                self.create_chatroom()
+                self.createChatroom()
             elif self.STATE == States.EXIT:
                 break
             else:
@@ -100,33 +119,42 @@ class FSM_Client(Config):
                 print("<Invalid input - please try again!>")
 
 
-    def main_room(self):
+    def mainRoom(self):
         print("\n")
 
         # Enter main chat room (remain here till user exits from the client object)
-        Client(self.SERVER_PORT + 1, self.USERNAME)
+        ChatClient(self.SERVER_PORT + 1, self.USERNAME)
 
         # Return to main menu after exiting the chat room
         self.STATE = States.MAIN_MENU
 
 
-    def show_chatrooms(self):
+    def showChatrooms(self):
         print("showing chatroom")
         self.STATE = States.MAIN_MENU
 
 
-    def enter_chatroom(self):
+    def enterChatroom(self):
         print("entering chatroom")
         self.STATE = States.MAIN_MENU
 
 
-    def create_chatroom(self):
+    def createChatroom(self):
         print("creating chatroom")
         self.STATE = States.MAIN_MENU
 
 
+    def sendData(self, message: str):
+        if not message:
+            return
 
-class Client(Config):
+        header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
+
+        self.rootClient.send(header + message.encode("utf-8"))
+
+
+
+class ChatClient(Base):
     def __init__(self, room_port: int, username: str):
         super().__init__()
 

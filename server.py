@@ -5,7 +5,7 @@ import json
 
 
 # Base class with config options
-class Config:
+class Base:
     def __init__(self):
         with open("config.json") as json_config:
             config = json.load(json_config)
@@ -17,17 +17,26 @@ class Config:
         self.DISCON_MSG = config["disconnect-msg"]
         self.MAX_ROOMS =  config["max-chat-rooms"]
 
+        commands = config["commands"]
+        
+        # Commands b/w server and root client
+        self.CMD_LIST_ROOMS = commands["list-rooms"]
+        self.CMD_GET_ROOM = commands["get-room"]
+        self.CMD_CREATE_ROOM = commands["create-room"]
 
 
-class ChatServer(Config):
+
+class ChatServer(Base):
     def __init__(self):
         super().__init__()
+        # List of sockets to poll for activity
+        self.socketList = []
 
         # Dictionary of sockets -> usernames
         self.connectedUsers = {}
 
-        # List of ChatRoom objects
-        self.openRooms = []
+        # Dict of ChatRoom names -> ChatRoom port
+        self.openRooms = {}
 
         # Commands sent from client to server
         self.commands = [
@@ -39,19 +48,62 @@ class ChatServer(Config):
         # Init server socket object for internet interface
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind((self.SERVER_IP, self.SERVER_PORT))
+        self.socketList.append(self.server)
 
         print("<SudoChat>")
 
-        # Initialize the main chat room
+        # Initialize the main chat room in parallel thread
         self.mainRoom = ChatRoom(self.SERVER_PORT + 1, "Group Chat")
-        self.openRooms.append(self.mainRoom)
+        self.openRooms[self.mainRoom.NAME] = self.mainRoom.PORT
+        t1 = threading.Thread(target=self.mainRoom.startChat)
+        t1.start()
 
         # Listen for messages and connections
         self.server.listen()
 
+        self.serverMain()
 
+    
     def __del__(self):
         self.server.close()
+
+    
+    def serverMain(self):
+        while True:
+            # OS level polling for activity on the listed sockets (listens for data packet on sockets)
+            active_sockets, _, _ = select.select(self.socketList, [], self.socketList)
+
+            for active_socket in active_sockets:
+                if active_socket == self.server:
+                    # accept connection from a client socket
+                    client_socket, _ = self.server.accept()
+
+                    # Call method to get username and store in clientDict
+                    username = self.getData(client_socket)
+
+                    if username is None:
+                        continue
+
+                    self.socketList.append(client_socket)
+                    self.connectedUsers[client_socket] = username
+                else:
+                    # TODO -> parse commands from client socket
+                    #message = self.getData(active_socket)
+                    pass
+
+
+    def getData(self, client_socket) -> str:
+        try:
+            # Read header packet which gives length of payload
+            msg_header = client_socket.recv(self.HEADER_BYTES)
+            msg_len = int.from_bytes(msg_header, byteorder="big")
+            
+            # Read message payload from client
+            payload = client_socket.recv(msg_len).decode("utf-8")
+
+            return payload
+        except:
+            return None
 
 
     def openChatRoom(self, initial_user):
@@ -63,7 +115,7 @@ class ChatServer(Config):
 
 
 
-class ChatRoom(Config):
+class ChatRoom(Base):
     def __init__(self, port: int, name: str):
         super().__init__()
         
@@ -81,19 +133,21 @@ class ChatRoom(Config):
         # Add our server socket to the socket list
         self.socketList.append(self.server)
 
-        print(f"<Welcome to the {self.NAME} Room!>")
-
-        # Listen for messages and connections
-        self.server.listen()
-
-        self.serverMain()
-
     
     def __del__(self):
         self.server.close()
 
 
-    def serverMain(self):
+    def startChat(self):
+        print(f"<Welcome to the {self.NAME} Room!>")
+
+        # Listen for messages and connections
+        self.server.listen()
+
+        self.chatMain()
+
+
+    def chatMain(self):
         while True:
             # OS level polling for activity on the listed sockets (listens for data packet on sockets)
             active_sockets, _, _ = select.select(self.socketList, [], self.socketList)
@@ -106,7 +160,7 @@ class ChatRoom(Config):
                     # accept connection from a client socket
                     client_socket, _ = self.server.accept()
 
-                    # Call method to get username and store in clientDict
+                    # Call method to get username
                     username = self.getData(client_socket)
 
                     if username is None:
