@@ -3,8 +3,6 @@ from enum import Enum, auto
 import socket
 import threading
 
-import msvcrt
-
 import json
 import sys
 
@@ -129,10 +127,31 @@ class FSM_Client(Base):
         self.STATE = States.MAIN_MENU
 
 
+    # Get list of chat rooms from server and display
     def showChatrooms(self):
-        print("showing chatroom")
-        self.STATE = States.MAIN_MENU
+        print("now going to receive chat rooms")
+        try:
+            self.sendData(self.CMD_LIST_ROOMS)  
 
+            response = self.getData()  
+
+            assert(response == "ACK")
+
+            numRooms = int(self.getData())
+
+            self.sendData("ACK")
+
+            roomNames = []
+
+            for _ in range(0, numRooms):
+                roomNames.append(self.getData())
+
+            print(roomNames)
+
+            self.STATE = States.MAIN_MENU
+        except:
+            print("<Error in showing chat rooms>")
+            self.STATE = States.MAIN_MENU
 
     def enterChatroom(self):
         print("entering chatroom")
@@ -142,6 +161,20 @@ class FSM_Client(Base):
     def createChatroom(self):
         print("creating chatroom")
         self.STATE = States.MAIN_MENU
+
+    
+    def getData(self) -> str:
+        try:
+            # Read header packet which gives length of payload
+            msg_header = self.rootClient.recv(self.HEADER_BYTES)
+            msg_len = int.from_bytes(msg_header, byteorder="big")
+            
+            # Read message payload from client
+            payload = self.rootClient.recv(msg_len).decode("utf-8")
+
+            return payload
+        except:
+            return None
 
 
     def sendData(self, message: str):
@@ -223,19 +256,15 @@ class ChatClient(Base):
 
     def clientListen(self):
         while True:
-            # Read length of incoming message from server
             try:
+                # Read length of incoming message from server
                 msg_header = self.client.recv(self.HEADER_BYTES)
+                msg_len = int.from_bytes(msg_header, byteorder="big")
+
+                # Read message payload from server
+                payload = self.client.recv(msg_len).decode("utf-8")
             except:
                 break
-
-            msg_len = int.from_bytes(msg_header, byteorder="big")
-
-            # Read message payload from server
-            payload = self.client.recv(msg_len).decode("utf-8")
-
-            if not payload:
-                continue
 
             print("\r" + payload)
             print("\r<You> ", end="")

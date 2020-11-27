@@ -26,7 +26,7 @@ class Base:
 
 
 
-class ChatServer(Base):
+class MainServer(Base):
     def __init__(self):
         super().__init__()
         # List of sockets to poll for activity
@@ -87,9 +87,20 @@ class ChatServer(Base):
                     self.socketList.append(client_socket)
                     self.connectedUsers[client_socket] = username
                 else:
-                    # TODO -> parse commands from client socket
-                    #message = self.getData(active_socket)
-                    pass
+                    # Parse commands from client socket
+                    message = self.getData(active_socket)
+
+                    # If no message, the client has disconnected
+                    if not message or message == self.DISCON_MSG:
+                        self.socketList.remove(active_socket)
+                        continue
+                    
+                    if message == self.CMD_LIST_ROOMS:
+                        self.listChatRooms(active_socket)
+                    elif message == self.CMD_GET_ROOM:
+                        self.sendPort(active_socket)
+                    elif message == self.CMD_CREATE_ROOM:
+                        self.openChatRoom(active_socket)
 
 
     def getData(self, client_socket) -> str:
@@ -104,6 +115,45 @@ class ChatServer(Base):
             return payload
         except:
             return None
+
+
+    def sendData(self, dest_socket, message: str) -> None:
+        header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
+        data = message.encode("utf-8")
+
+        dest_socket.send(header + data)
+
+
+    # Client requests to see all the open chatrooms
+    def listChatRooms(self, client_socket):
+        try:
+            self.sendData(client_socket, "ACK")
+
+            # Send back number of chatrooms
+            numRooms = len(self.openRooms)
+            self.sendData(client_socket, str(numRooms))
+
+            response = self.getData(client_socket)
+
+            assert(response == "ACK")
+
+            # Iterate through room names and send to client
+            for roomName in self.openRooms.keys():
+                self.sendData(client_socket, roomName)
+        except:
+            pass
+
+
+    # Client requests entry to room: get room name and send back port
+    def sendPort(self, client_socket):
+        self.sendData(client_socket, "ACK")
+
+        roomName = self.getData(client_socket)
+
+        if self.openRooms.get(roomName):
+            self.sendData(client_socket, str(self.openRooms[roomName]))
+        else:
+            self.sendData(client_socket, "NACK")
 
 
     def openChatRoom(self, initial_user):
@@ -275,4 +325,4 @@ class ChatRoom(Base):
 
 
 
-chat = ChatServer()
+chat = MainServer()
