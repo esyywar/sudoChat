@@ -79,8 +79,13 @@ class FSM_Client:
 
 
     def main_room(self):
+        print("\n")
+        
         # Enter main chat room (remain here till user exits from the client object)
         Client(5001, self.username)
+
+        # Return to main menu after exiting the chat room
+        self.state = States.MAIN_MENU
 
 
     def show_chatrooms(self):

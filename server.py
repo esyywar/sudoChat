@@ -81,7 +81,7 @@ class ChatRoom:
         # Add our server socket to the socket list
         self.socketList.append(self.server)
 
-        print(f"\n<Welcome to the {self.NAME} Room!>")
+        print(f"<Welcome to the {self.NAME} Room!>")
 
         # Listen for messages and connections
         self.server.listen()
@@ -112,12 +112,18 @@ class ChatRoom:
                     if username is None:
                         continue
 
+                    # Welcome message for the new client
+                    self.sendData(client_socket, f"<Welcome to the {self.NAME} Room!>")
+
+                    # TODO -> send new client list of the past x messages
+
+                    # Send notif to new client of how many users in the chat
+                    notif = self.chatUsersNotif()
+                    self.sendData(client_socket, notif)
+
                     # Append to socket list and enter in clientDict
                     self.socketList.append(client_socket)
                     self.clientDict[client_socket] = username
-
-                    # Welcome message for the new client
-                    self.sendData(client_socket, f"<Welcome to the {self.NAME} Room!>")
 
                     # Broadcast notification to other clients in room
                     notif = f"<{username} has entered the chat! ({len(self.socketList) - 1} users online)>"
@@ -167,14 +173,14 @@ class ChatRoom:
             return None
 
     
-    def sendData(self, dest_socket, message: str):
+    def sendData(self, dest_socket, message: str) -> None:
         header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
         data = message.encode('utf-8')
 
         dest_socket.send(header + data)
 
 
-    def broadcast(self, sender_socket, message: str):
+    def broadcast(self, sender_socket, message: str) -> None:
         header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
         data = message.encode('utf-8')
 
@@ -183,7 +189,7 @@ class ChatRoom:
                 sock.send(header + data)
 
     
-    def disconnectClient(self, exit_socket):
+    def disconnectClient(self, exit_socket) -> None:
         # If socket has already been removed then exit
         if exit_socket not in self.socketList:
             return
@@ -196,6 +202,23 @@ class ChatRoom:
 
         print(notif)
         self.broadcast(exit_socket, notif)
+
+    
+    def chatUsersNotif(self) -> str:
+        numUsers = len(self.clientDict.values())
+        users = [user for user in self.clientDict.values()]
+
+        if numUsers == 0:
+            return "<You are the first user in the room!>"
+        elif numUsers == 1:
+            return f"<{users[0]} is in the room!>"
+        elif numUsers == 2:
+            return f"<{users[0]} and {users[1]} are in the room!>"
+        elif numUsers == 3:
+            return f"<{users[0]}, {users[1]} and {len(numUsers) - 2} other are in the room!>"
+        else:
+            return f"<{users[0]}, {users[1]} and {len(numUsers) - 2} others are in the room!>"
+
 
 
 chat = ChatServer()
