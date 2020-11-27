@@ -9,6 +9,22 @@ import json
 import sys
 
 
+# Base class with config options
+class Config:
+    def __init__(self):
+        with open("config.json") as json_config:
+            config = json.load(json_config)
+
+        # Config constants
+        self.SERVER_IP = config["server-ip"]
+        self.SERVER_PORT = config["server-port"]
+        self.HEADER_BYTES = config["header-bytes"]
+        self.DISCON_MSG = config["disconnect-msg"]
+        self.USER_EXIT_MSG = config["exit-msg"]
+
+
+
+# States for FSM
 class States(Enum):
     MAIN_MENU = auto()
     ENTER_MAIN = auto()
@@ -18,8 +34,11 @@ class States(Enum):
 
 
 
-class FSM_Client:
+class FSM_Client(Config):
     def __init__(self):
+        super().__init__()
+
+        # Dict of states for the state machine
         self.stateDict = {
             "0": States.MAIN_MENU,
             "1": States.ENTER_MAIN,
@@ -28,37 +47,40 @@ class FSM_Client:
             "4": States.EXIT
         }
 
-        self.state = States.MAIN_MENU
+        # Initializing state
+        self.STATE = States.MAIN_MENU
 
+        # Welcome messages and get username
         print("\n<Welcome to SudoChat!>")
+        self.USERNAME = input("Please enter your username: ")
+        print(f"\n<Hello, {self.USERNAME}!>")
 
-        self.username = input("Please enter your username: ")
-
-        print(f"\n<Hello, {self.username}!>")
+        # Create main socket for client side application
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Enter the state machine
         self.state_machine()
 
     
     def __del__(self):
-        if self.username:
-            print(f"<Goodbye, {self.username}>")
+        if self.USERNAME:
+            print(f"\n<Goodbye, {self.USERNAME}>")
 
     
     def state_machine(self):
         while True:
-            if self.state == States.MAIN_MENU:
+            if self.STATE == States.MAIN_MENU:
                 self.menu()
-            elif self.state == States.ENTER_MAIN:
+            elif self.STATE == States.ENTER_MAIN:
                 self.main_room()
-            elif self.state == States.SHOW_CHATS:
+            elif self.STATE == States.SHOW_CHATS:
                 self.show_chatrooms()
-            elif self.state == States.CREATE_CHAT:
+            elif self.STATE == States.CREATE_CHAT:
                 self.create_chatroom()
-            elif self.state == States.EXIT:
+            elif self.STATE == States.EXIT:
                 break
             else:
-                self.state = States.MAIN_MENU
+                self.STATE = States.MAIN_MENU
 
     
     def menu(self):
@@ -72,7 +94,7 @@ class FSM_Client:
             choice = input()
 
             if self.stateDict.get(choice):
-                self.state = self.stateDict[choice]
+                self.STATE = self.stateDict[choice]
                 break
             else:
                 print("<Invalid input - please try again!>")
@@ -80,43 +102,37 @@ class FSM_Client:
 
     def main_room(self):
         print("\n")
-        
+
         # Enter main chat room (remain here till user exits from the client object)
-        Client(5001, self.username)
+        Client(self.SERVER_PORT + 1, self.USERNAME)
 
         # Return to main menu after exiting the chat room
-        self.state = States.MAIN_MENU
+        self.STATE = States.MAIN_MENU
 
 
     def show_chatrooms(self):
         print("showing chatroom")
-        self.state = States.MAIN_MENU
+        self.STATE = States.MAIN_MENU
 
 
     def enter_chatroom(self):
         print("entering chatroom")
-        self.state = States.MAIN_MENU
+        self.STATE = States.MAIN_MENU
 
 
     def create_chatroom(self):
         print("creating chatroom")
-        self.state = States.MAIN_MENU
+        self.STATE = States.MAIN_MENU
 
 
 
-class Client:
-    def __init__(self, port: int, username: str):
-        # Read configuration data from config file
-        with open("config.json") as json_config:
-            config = json.load(json_config)
+class Client(Config):
+    def __init__(self, room_port: int, username: str):
+        super().__init__()
 
-        self.SERVER_PORT = port
+        # Set up attributes
+        self.SERVER_PORT = room_port
         self.USERNAME = username
-
-        self.SERVER_IP = config["server-ip"]
-        self.HEADER_BYTES = config["header-bytes"]
-        self.DISCON_MSG = config["disconnect-msg"]
-        self.EXIT_MSG = config["exit-msg"]
 
         # Initialize the socket client
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -142,12 +158,12 @@ class Client:
     def connectRoom(self):
         try:
             self.client.connect((self.SERVER_IP, self.SERVER_PORT))
-
-            # Send the username header and username to the server
-            self.sendData(self.USERNAME)
         except:
             print("Connection to chat failed...")
             return
+
+        # Send the username header and username to the server
+        self.sendData(self.USERNAME)
 
         # start threads for sending and receiving data
         self.send_thread.start()
@@ -165,7 +181,7 @@ class Client:
 
             if message is None:
                 continue
-            elif message == self.EXIT_MSG:
+            elif message == self.USER_EXIT_MSG:
                 self.sendData(self.DISCON_MSG)
                 self.client.close()
                 break

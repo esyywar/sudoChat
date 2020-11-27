@@ -4,22 +4,30 @@ import select
 import json
 
 
-class ChatServer:
+# Base class with config options
+class Config:
     def __init__(self):
-
-        self.chatRooms = []
-        self.socketList = []
-
-        # Read configuration data from config file
         with open("config.json") as json_config:
             config = json.load(json_config)
 
-        # Config constands
+        # Config constants
         self.SERVER_IP = config["server-ip"]
         self.SERVER_PORT = config["server-port"]
         self.HEADER_BYTES = config["header-bytes"]
         self.DISCON_MSG = config["disconnect-msg"]
         self.MAX_ROOMS =  config["max-chat-rooms"]
+
+
+
+class ChatServer(Config):
+    def __init__(self):
+        super().__init__()
+
+        # Dictionary of sockets -> usernames
+        self.connectedUsers = {}
+
+        # List of ChatRoom objects
+        self.openRooms = []
 
         # Commands sent from client to server
         self.commands = [
@@ -32,22 +40,18 @@ class ChatServer:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind((self.SERVER_IP, self.SERVER_PORT))
 
-        # Add our server socket to the socket list
-        self.socketList.append(self.server)
         print("<SudoChat>")
 
         # Initialize the main chat room
         self.mainRoom = ChatRoom(self.SERVER_PORT + 1, "Group Chat")
+        self.openRooms.append(self.mainRoom)
 
         # Listen for messages and connections
         self.server.listen()
 
 
     def __del__(self):
-        for room in self.chatRooms:
-            del room
-        
-        print()
+        self.server.close()
 
 
     def openChatRoom(self, initial_user):
@@ -59,18 +63,14 @@ class ChatServer:
 
 
 
-class ChatRoom:
+class ChatRoom(Config):
     def __init__(self, port: int, name: str):
+        super().__init__()
+        
         self.socketList = []
         self.clientDict = {}
 
-        # Read configuration data from config file
-        with open("config.json") as json_config:
-            config = json.load(json_config)
-
-        self.SERVER_IP = config["server-ip"]
-        self.HEADER_BYTES = config["header-bytes"]
-        self.DISCON_MSG = config["disconnect-msg"]
+        # Initialize attributes
         self.PORT = port
         self.NAME = name
 
