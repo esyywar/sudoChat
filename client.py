@@ -1,3 +1,5 @@
+from enum import Enum, auto
+
 import socket
 import threading
 
@@ -7,14 +9,106 @@ import json
 import sys
 
 
-class Client:
+class States(Enum):
+    MAIN_MENU = auto()
+    ENTER_MAIN = auto()
+    SHOW_CHATS = auto()
+    CREATE_CHAT = auto()
+    EXIT = auto()
+
+
+
+class FSM_Client:
     def __init__(self):
+        self.stateDict = {
+            "0": States.MAIN_MENU,
+            "1": States.ENTER_MAIN,
+            "2": States.SHOW_CHATS,
+            "3": States.CREATE_CHAT,
+            "4": States.EXIT
+        }
+
+        self.state = States.MAIN_MENU
+
+        print("\n<Welcome to SudoChat!>")
+
+        self.username = input("Please enter your username: ")
+
+        print(f"\n<Hello, {self.username}!>")
+
+        # Enter the state machine
+        self.state_machine()
+
+    
+    def __del__(self):
+        if self.username:
+            print(f"<Goodbye, {self.username}>")
+
+    
+    def state_machine(self):
+        while True:
+            if self.state == States.MAIN_MENU:
+                self.menu()
+            elif self.state == States.ENTER_MAIN:
+                self.main_room()
+            elif self.state == States.SHOW_CHATS:
+                self.show_chatrooms()
+            elif self.state == States.CREATE_CHAT:
+                self.create_chatroom()
+            elif self.state == States.EXIT:
+                break
+            else:
+                self.state = States.MAIN_MENU
+
+    
+    def menu(self):
+        while True:
+            print("\nEnter a number for one of the following options:")
+            print("1 - Enter main chat room")
+            print("2 - Show all chat rooms")
+            print("3 - Create a chat room")
+            print("4 - Close")
+
+            choice = input()
+
+            if self.stateDict.get(choice):
+                self.state = self.stateDict[choice]
+                break
+            else:
+                print("<Invalid input - please try again!>")
+
+
+    def main_room(self):
+        # Enter main chat room (remain here till user exits from the client object)
+        Client(5001, self.username)
+
+
+    def show_chatrooms(self):
+        print("showing chatroom")
+        self.state = States.MAIN_MENU
+
+
+    def enter_chatroom(self):
+        print("entering chatroom")
+        self.state = States.MAIN_MENU
+
+
+    def create_chatroom(self):
+        print("creating chatroom")
+        self.state = States.MAIN_MENU
+
+
+
+class Client:
+    def __init__(self, port: int, username: str):
         # Read configuration data from config file
         with open("config.json") as json_config:
             config = json.load(json_config)
 
+        self.SERVER_PORT = port
+        self.USERNAME = username
+
         self.SERVER_IP = config["server-ip"]
-        self.SERVER_PORT = config["server-port"]
         self.HEADER_BYTES = config["header-bytes"]
         self.DISCON_MSG = config["disconnect-msg"]
         self.EXIT_MSG = config["exit-msg"]
@@ -26,7 +120,7 @@ class Client:
         self.send_thread = threading.Thread(target=self.clientInput, daemon=True)
         self.read_thread = threading.Thread(target=self.clientListen, daemon=True)
 
-        self.sendUsername()
+        self.connectRoom()
 
 
     def __del__(self):
@@ -40,23 +134,15 @@ class Client:
         print("<You have exited the chat room.>")
 
 
-    def sendUsername(self):
-        # Get a username for the active user
-        self.username = input("Enter your username: ")
-
-        if len(self.username) < 3 or len(self.username) > 30:
-            print("Sorry, username must be between 3 and 30 characters long!")
-            self.sendUsername()
-
+    def connectRoom(self):
         try:
-            self.client.connect((self.SERVER_IP, 5001))
+            self.client.connect((self.SERVER_IP, self.SERVER_PORT))
 
             # Send the username header and username to the server
-            self.sendData(self.username)
-
+            self.sendData(self.USERNAME)
         except:
-            print("Username send to server failed...")
-            sys.exit()
+            print("Connection to chat failed...")
+            return
 
         # start threads for sending and receiving data
         self.send_thread.start()
@@ -113,8 +199,7 @@ class Client:
         header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
 
         self.client.send(header + message.encode("utf-8"))
-     
-
-client = Client()
 
 
+
+start = FSM_Client()
