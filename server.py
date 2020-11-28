@@ -58,6 +58,7 @@ class MainServer(Base):
 
     
     def __del__(self):
+        print("Main server thread closing...")
         self.server.close()
 
     
@@ -345,7 +346,7 @@ class ChatRoom(Base):
         users = [user for user in self.clientDict.values()]
 
         if numUsers == 0:
-            return "<You are the first user in the room!>"
+            return "<You are the only user in the room!>"
         elif numUsers == 1:
             return f"<{users[0]} is in the room!>"
         elif numUsers == 2:

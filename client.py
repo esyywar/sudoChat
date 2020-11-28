@@ -259,6 +259,9 @@ class ChatClient(Base):
         # Initialize the socket client
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+        # 3 second response limit for socket
+        self.client.settimeout(3)
+
         # Initialize threads for listening, sending data
         self.send_thread = threading.Thread(target=self.clientInput, daemon=True)
         self.read_thread = threading.Thread(target=self.clientListen, daemon=True)
@@ -302,6 +305,8 @@ class ChatClient(Base):
                 continue
             elif message == self.USER_EXIT_MSG:
                 self.sendData(self.DISCON_MSG)
+
+                # Close socket on exit thereby terminating threads
                 self.client.close()
                 break
 
