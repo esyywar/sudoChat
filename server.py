@@ -35,7 +35,7 @@ class MainServer(Base):
         # Dictionary of sockets -> usernames
         self.connectedUsers = {}
 
-        # Dict of ChatRoom names -> ChatRoom port
+        # Dict of ChatRoom name -> ChatRoom objects
         self.openRooms = {}
 
         # Init server socket object for internet interface
@@ -47,7 +47,7 @@ class MainServer(Base):
 
         # Initialize the main chat room in parallel thread
         self.mainRoom = ChatRoom(self.SERVER_PORT + 1, "Group Chat")
-        self.openRooms[self.mainRoom.NAME] = self.mainRoom.PORT
+        self.openRooms[self.mainRoom.NAME] = self.mainRoom
         t1 = threading.Thread(target=self.mainRoom.startChat)
         t1.start()
 
@@ -146,7 +146,7 @@ class MainServer(Base):
 
             # If room name found, send back the port
             if self.openRooms.get(roomName):
-                self.sendData(client_socket, str(self.openRooms[roomName]))
+                self.sendData(client_socket, str(self.openRooms[roomName].PORT))
             else:
                 self.sendData(client_socket, "NACK")
         except:
@@ -172,7 +172,7 @@ class MainServer(Base):
                 t1 = threading.Thread(target=chat.startChat)
 
                 # Append to list of chat rooms
-                self.openRooms[name] = port
+                self.openRooms[name] = chat
 
                 t1.start()            
 
@@ -181,10 +181,6 @@ class MainServer(Base):
                 self.sendData(client_socket, "NACK")
         except:
             pass
-
-
-    def closeChatRoom(self):
-        pass
 
 
 

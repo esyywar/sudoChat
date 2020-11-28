@@ -183,7 +183,7 @@ class FSM_Client(Base):
                 # Return to main menu after exiting the chat room
                 self.STATE = States.MAIN_MENU
             except:
-                print("<Error in connecting to chat room>")
+                print(f"<Error in connecting to {room}>")
                 self.STATE = States.MAIN_MENU
                 return
         else:
