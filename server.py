@@ -38,13 +38,6 @@ class MainServer(Base):
         # Dict of ChatRoom names -> ChatRoom port
         self.openRooms = {}
 
-        # Commands sent from client to server
-        self.commands = [
-            "LIST_CHATROOMS",
-            "OPEN_CHATROOM",
-            "ENTER_CHATROOM"
-        ]
-
         # Init server socket object for internet interface
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind((self.SERVER_IP, self.SERVER_PORT))
@@ -199,7 +192,13 @@ class ChatRoom(Base):
     def __init__(self, port: int, name: str):
         super().__init__()
         
+        # List of client sockets connected to the chat room
         self.socketList = []
+
+        # List of previous messages (limit of 10)
+        self.msgCache = []
+
+        # Dictionary of connected sockets -> usernames
         self.clientDict = {}
 
         # Initialize attributes
@@ -249,11 +248,13 @@ class ChatRoom(Base):
                     # Welcome message for the new client
                     self.sendData(client_socket, f"<Welcome to the {self.NAME} Room!>")
 
-                    # TODO -> send new client list of the past x messages
-
                     # Send notif to new client of how many users in the chat
                     notif = self.chatUsersNotif()
                     self.sendData(client_socket, notif)
+
+                    # Send previous 5 messages to new client
+                    for msg in self.msgCache[-5:]:
+                        self.sendData(client_socket, msg)
 
                     # Append to socket list and enter in clientDict
                     self.socketList.append(client_socket)
@@ -282,6 +283,11 @@ class ChatRoom(Base):
                     # Data to send clients
                     print(msg_prefix + message)
                     msg_data = (msg_prefix + message)
+
+                    # Store message in cache
+                    if len(self.msgCache) >= 10:
+                        self.msgCache.pop(0)
+                    self.msgCache.append(msg_data)
 
                     # Broadcast message
                     self.broadcast(active_socket, msg_data)
@@ -349,9 +355,9 @@ class ChatRoom(Base):
         elif numUsers == 2:
             return f"<{users[0]} and {users[1]} are in the room!>"
         elif numUsers == 3:
-            return f"<{users[0]}, {users[1]} and {len(numUsers) - 2} other are in the room!>"
+            return f"<{users[0]}, {users[1]} and {users[2]} are in the room!>"
         else:
-            return f"<{users[0]}, {users[1]} and {len(numUsers) - 2} others are in the room!>"
+            return f"<{users[0]}, {users[1]} and {numUsers - 2} others are in the room!>"
 
 
 
