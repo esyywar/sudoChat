@@ -102,7 +102,7 @@ class FSM_Client(Base):
     
     def menu(self):
         while True:
-            print("\nEnter a number for one of the following options:")
+            print("\nInput a number for one of the following options:")
             print("1 - Enter main chat room")
             print("2 - Show all chat rooms")
             print("3 - Create a chat room")
@@ -118,10 +118,10 @@ class FSM_Client(Base):
 
 
     def mainRoom(self):
-        print("\n")
-
         # Enter main chat room (remain here till user exits from the client object)
-        ChatClient(self.SERVER_PORT + 1, self.USERNAME)
+        chat = ChatClient(self.SERVER_PORT + 1, self.USERNAME)
+        print("\n")
+        chat.enterChat()
 
         # Return to main menu after exiting the chat room
         self.STATE = States.MAIN_MENU
@@ -129,12 +129,10 @@ class FSM_Client(Base):
 
     # Get list of chat rooms from server and display
     def showChatrooms(self):
-        print("now going to receive chat rooms")
         try:
             self.sendData(self.CMD_LIST_ROOMS)  
 
             response = self.getData()  
-
             assert(response == "ACK")
 
             numRooms = int(self.getData())
@@ -146,21 +144,84 @@ class FSM_Client(Base):
             for _ in range(0, numRooms):
                 roomNames.append(self.getData())
 
-            print(roomNames)
-
-            self.STATE = States.MAIN_MENU
+            self.enterChatroom(roomNames)
         except:
             print("<Error in showing chat rooms>")
             self.STATE = States.MAIN_MENU
 
-    def enterChatroom(self):
-        print("entering chatroom")
-        self.STATE = States.MAIN_MENU
+
+    # To enter the chatroom we get the port and then connect
+    def enterChatroom(self, roomNames: list):
+        print("\nInput a number to enter a chat or return to main menu:")
+
+        for ind, val in enumerate(roomNames):
+            print(f"{ind + 1} - {val}")
+
+        print(f"{len(roomNames) + 1} - Exit to main menu")
+
+        choice = input()
+
+        if int(choice) > 0 and int(choice) <= len(roomNames):
+            room = roomNames[int(choice) - 1]
+
+            try:
+                self.sendData(self.CMD_GET_ROOM)
+
+                response = self.getData()
+                assert response == "ACK"
+
+                self.sendData(room)
+
+                port = self.getData()
+                assert port != "NACK"
+
+                # Enter the chat room
+                chat = ChatClient(int(port), self.USERNAME)
+                print("\n")
+                chat.enterChat()
+
+                # Return to main menu after exiting the chat room
+                self.STATE = States.MAIN_MENU
+            except:
+                print("<Error in connecting to chat room>")
+                self.STATE = States.MAIN_MENU
+                return
+        else:
+            self.STATE = States.MAIN_MENU
 
 
     def createChatroom(self):
-        print("creating chatroom")
-        self.STATE = States.MAIN_MENU
+        try:
+            self.sendData(self.CMD_CREATE_ROOM)
+
+            response = self.getData()
+            assert response == "ACK"
+        except:
+            print("\n<Failed to create chat room>")
+            self.STATE = States.MAIN_MENU
+            return
+
+        print("\n<What would you like to name the chat room?>")
+        name = input()
+
+        try:
+            self.sendData(name)
+
+            # Server sends back 'NACK' if name is invalid
+            port = self.getData()
+            assert port != "NACK"
+
+            # Enter the new chat room
+            chat = ChatClient(int(port), self.USERNAME)
+            print("\n")
+            chat.enterChat()
+
+            # Return to main menu after exiting the chat room
+            self.STATE = States.MAIN_MENU
+        except:
+            print("<This room name is already in use>")
+            self.STATE = States.MAIN_MENU
+            return
 
     
     def getData(self) -> str:
@@ -202,7 +263,13 @@ class ChatClient(Base):
         self.send_thread = threading.Thread(target=self.clientInput, daemon=True)
         self.read_thread = threading.Thread(target=self.clientListen, daemon=True)
 
-        self.connectRoom()
+        try:
+            self.client.connect((self.SERVER_IP, self.SERVER_PORT))
+
+            # Send the username header and username to the server
+            self.sendData(self.USERNAME)
+        except:
+            print("<Connection to chat failed>")
 
 
     def __del__(self):
@@ -216,16 +283,7 @@ class ChatClient(Base):
         print("<You have exited the chat room.>")
 
 
-    def connectRoom(self):
-        try:
-            self.client.connect((self.SERVER_IP, self.SERVER_PORT))
-        except:
-            print("Connection to chat failed...")
-            return
-
-        # Send the username header and username to the server
-        self.sendData(self.USERNAME)
-
+    def enterChat(self):
         # start threads for sending and receiving data
         self.send_thread.start()
         self.read_thread.start()
@@ -250,7 +308,7 @@ class ChatClient(Base):
             try:
                 self.sendData(message)
             except:
-                print("Message could not be sent...")
+                print("<Message send failed>")
                 break
 
 
@@ -275,7 +333,6 @@ class ChatClient(Base):
             return
 
         header = len(message).to_bytes(self.HEADER_BYTES, byteorder="big")
-
         self.client.send(header + message.encode("utf-8"))
 
 

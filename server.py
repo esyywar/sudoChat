@@ -141,23 +141,53 @@ class MainServer(Base):
             for roomName in self.openRooms.keys():
                 self.sendData(client_socket, roomName)
         except:
-            pass
+            print("<Send chat room list failed>")
 
 
     # Client requests entry to room: get room name and send back port
     def sendPort(self, client_socket):
-        self.sendData(client_socket, "ACK")
+        try:
+            self.sendData(client_socket, "ACK")
 
-        roomName = self.getData(client_socket)
+            roomName = self.getData(client_socket)
 
-        if self.openRooms.get(roomName):
-            self.sendData(client_socket, str(self.openRooms[roomName]))
-        else:
-            self.sendData(client_socket, "NACK")
+            # If room name found, send back the port
+            if self.openRooms.get(roomName):
+                self.sendData(client_socket, str(self.openRooms[roomName]))
+            else:
+                self.sendData(client_socket, "NACK")
+        except:
+            print("<Send port to client failed>")
 
 
-    def openChatRoom(self, initial_user):
-        pass
+    def openChatRoom(self, client_socket):
+        try:
+            # Check if we have reached limit num of rooms
+            if len(self.openRooms) < self.MAX_ROOMS:
+                self.sendData(client_socket, "ACK")
+            else:
+                self.sendData(client_socket, "NACK")
+                return
+
+            name = self.getData(client_socket)
+
+            # If name valid, start room in next port and send port num to client
+            if name not in self.openRooms.keys():
+                port = self.SERVER_PORT + len(self.openRooms) + 1
+
+                chat = ChatRoom(port, name)
+                t1 = threading.Thread(target=chat.startChat)
+
+                # Append to list of chat rooms
+                self.openRooms[name] = port
+
+                t1.start()            
+
+                self.sendData(client_socket, str(port))
+            else:
+                self.sendData(client_socket, "NACK")
+        except:
+            pass
 
 
     def closeChatRoom(self):
