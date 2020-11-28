@@ -1,7 +1,14 @@
 FROM python:3.8.6-buster
 
-ADD my_script.py /
+# Making working directory
+WORKDIR /server
 
-RUN pip install pystrich
+# Python dependencies
+COPY dependencies.txt ./
+RUN pip install -r dependencies.txt
 
-CMD [ "python", "./my_script.py" ]
+# Copy src code
+COPY server.py config.json ./
+
+# Server run command
+CMD [ "python", "./server.py" ]
