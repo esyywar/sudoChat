@@ -9,7 +9,7 @@ import select
 class Base:
     def __init__(self):
         # Config constants
-        self.SERVER_IP = "127.0.0.1"
+        self.SERVER_IP = "127.0.1.1"
         self.SERVER_PORT = 5000
         self.HEADER_BYTES = 4
         self.DISCON_MSG = "DISCONNECT"
