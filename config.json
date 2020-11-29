@@ -1,5 +1,5 @@
 {
-    "server-ip": "192.168.156.225",
+    "server-ip": "127.0.0.1",
     "server-port": 5000,
     "header-bytes": 4,
     "disconnect-msg": "DISCONNECT",

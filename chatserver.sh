@@ -14,9 +14,7 @@
 DIR=/home/esyywar/sudoChat
 DAEMON=$DIR/server.py
 DAEMON_NAME=sudochat_server
-DAEMON_OPTS=""
 
-# Root is needed to use the GPIO pins on the Raspberry
 DAEMON_USER=root
 
 PIDFILE=/tmp/$DAEMON_NAME.pid
@@ -25,7 +23,7 @@ PIDFILE=/tmp/$DAEMON_NAME.pid
 
 do_start () {
     log_daemon_msg "Starting system $DAEMON_NAME daemon"
-    start-stop-daemon -–start -–background –-pidfile $PIDFILE –-make-pidfile -–user $DAEMON_USER –-chuid $DAEMON_USER –-startas $DAEMON — $DAEMON_OPTS
+    start-stop-daemon -–start -–background –-pidfile $PIDFILE –-make-pidfile -–user $DAEMON_USER –-chuid $DAEMON_USER –-startas $DAEMON
     log_end_msg $?
 }
 do_stop () {
