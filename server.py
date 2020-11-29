@@ -3,6 +3,8 @@ import threading
 import select
 import json
 
+from daemonize import Daemonize
+
 
 # Base class with config options
 class Base:
@@ -357,5 +359,14 @@ class ChatRoom(Base):
             return f"<{users[0]}, {users[1]} and {numUsers - 2} others are in the room!>"
 
 
+# Main function run call
+def main():
+    chat = MainServer()
+    return 0
 
-chat = MainServer()
+
+# Run application in linux daemon and create pid file
+daemon = Daemonize(app="sudochat_server", pid="/tmp/sudochat_server.pid", action=main)
+
+
+
