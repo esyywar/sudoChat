@@ -3,28 +3,22 @@
 import socket
 import threading
 import select
-import json
 
 
 # Base class with config options
 class Base:
     def __init__(self):
-        with open("config.json") as json_config:
-            config = json.load(json_config)
-
         # Config constants
-        self.SERVER_IP = config["server-ip"]
-        self.SERVER_PORT = config["server-port"]
-        self.HEADER_BYTES = config["header-bytes"]
-        self.DISCON_MSG = config["disconnect-msg"]
-        self.MAX_ROOMS =  config["max-chat-rooms"]
-
-        commands = config["commands"]
+        self.SERVER_IP = "127.0.0.1"
+        self.SERVER_PORT = 5000
+        self.HEADER_BYTES = 4
+        self.DISCON_MSG = "DISCONNECT"
+        self.MAX_ROOMS =  10
         
         # Commands b/w server and root client
-        self.CMD_LIST_ROOMS = commands["list-rooms"]
-        self.CMD_GET_ROOM = commands["get-room"]
-        self.CMD_CREATE_ROOM = commands["create-room"]
+        self.CMD_LIST_ROOMS = "LIST_ROOMS"
+        self.CMD_GET_ROOM = "GET_ROOM"
+        self.CMD_CREATE_ROOM = "CREATE_ROOM"
 
 
 
