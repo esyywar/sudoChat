@@ -283,7 +283,7 @@ class ChatClient(Base):
             pass
 
         self.client.close()
-        print("<You have exited the chat room.>")
+        
 
 
     def enterChat(self):
@@ -306,8 +306,8 @@ class ChatClient(Base):
             elif message == self.USER_EXIT_MSG:
                 self.sendData(self.DISCON_MSG)
 
-                # Close socket on exit thereby terminating threads
-                self.client.close()
+                print("<You have exited the chat room.>")
+                self.__del__()
                 break
 
             try:
