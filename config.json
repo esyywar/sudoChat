@@ -1,0 +1,13 @@
+{
+    "server-ip": "127.0.1.1",
+    "server-port": 5000,
+    "header-bytes": 4,
+    "disconnect-msg": "DISCONNECT",
+    "exit-msg": "EXIT",
+    "max-chat-rooms": 10,
+    "commands": {
+        "list-rooms": "LIST_ROOMS",
+        "get-room": "GET_ROOM",
+        "create-room": "CREATE_ROOM"
+    }
+}
