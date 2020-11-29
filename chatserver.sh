@@ -21,9 +21,12 @@ PIDFILE=/tmp/$DAEMON_NAME.pid
 
 . /lib/lsb/init-functions
 
+# Start command:
+# start-stop-daemon --start --startas /home/esyywar/sudoChat/server.py --user root --background --pidfile /tmp/sudochat_server --make-pidfile
+
 do_start () {
     log_daemon_msg "Starting system $DAEMON_NAME daemon"
-    start-stop-daemon -–start -–background –-pidfile $PIDFILE –-make-pidfile -–user $DAEMON_USER –-chuid $DAEMON_USER –-startas $DAEMON
+    start-stop-daemon -–start –-startas $DAEMON -–user $DAEMON_USER -–background –-pidfile $PIDFILE –-make-pidfile 
     log_end_msg $?
 }
 do_stop () {
