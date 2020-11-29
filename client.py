@@ -63,9 +63,6 @@ class FSM_Client(Base):
         # Create main socket for client side application
         self.rootClient = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        # 5 second timeout for response from server
-        self.rootClient.settimeout(5)
-
         # Connect to main chat server
         self.connectServer()
 
