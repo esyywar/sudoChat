@@ -367,6 +367,6 @@ def main():
 
 # Run application in linux daemon and create pid file
 daemon = Daemonize(app="sudochat_server", pid="/tmp/sudochat_server.pid", action=main)
-
+daemon.start()
 
 
